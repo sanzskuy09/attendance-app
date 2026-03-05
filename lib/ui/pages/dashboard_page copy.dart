@@ -42,11 +42,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     // Pantau status loading & error absensi
     final attendanceState = ref.watch(attendanceProvider);
 
-    final List<Widget> pages = [
-      _buildHomeTab(context, ref), // Index 0: Home
-      _buildHistoryTab(context, ref), // Index 1: Riwayat
-      const Center(child: Text("Halaman Akun - Segera Hadir")), // Index 2: Akun
-    ];
+    // final List<Widget> pages = [
+    //   _buildHomeTab(context, ref),     // Index 0: Home
+    //   _buildHistoryTab(context, ref),  // Index 1: Riwayat
+    //   const Center(child: Text("Halaman Akun - Segera Hadir")), // Index 2: Akun
+    // ];
 
     // Listener untuk aksi setelah absensi (Sukses/Gagal)
     ref.listen<AttendanceState>(attendanceProvider, (previous, next) {
@@ -124,271 +124,34 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       ),
 
       body: SafeArea(
-        child: pages[_selectedIndex],
-        // child: SingleChildScrollView(
-        //   child: Column(
-        //     children: [
-        //       _buildHeader(context, ref),
-        //       const SizedBox(height: 20),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              _buildHeader(context, ref),
+              const SizedBox(height: 20),
 
-        //       Padding(
-        //         padding: const EdgeInsets.symmetric(horizontal: 20.0),
-        //         child: Column(
-        //           children: [
-        //             _buildLocationCard(ref.watch(locationProvider)),
-        //             const SizedBox(height: 40),
-        //             _buildAttendanceButtons(
-        //               ref.watch(locationProvider),
-        //               attendanceState,
-        //               ref,
-        //               currentStatus,
-        //             ),
-        //             const SizedBox(height: 40),
-        //             _buildHistorySection(ref),
-        //             const SizedBox(height: 20),
-        //           ],
-        //         ),
-        //       ),
-        //     ],
-        //   ),
-        // ),
-      ),
-    );
-  }
-
-  // ==========================================
-  // TAB 1: HOME (Berisi UI Dashboard yang sudah kita buat sebelumnya)
-  // ==========================================
-  Widget _buildHomeTab(BuildContext context, WidgetRef ref) {
-    final historyData = ref.watch(todayHistoryProvider).value;
-    final String currentStatus = historyData?['status'] ?? "none";
-    final attendanceState = ref.watch(attendanceProvider);
-
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          _buildHeader(context, ref),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Column(
-              children: [
-                _buildLocationCard(ref.watch(locationProvider)),
-                const SizedBox(height: 40),
-                _buildAttendanceButtons(
-                  ref.watch(locationProvider),
-                  attendanceState,
-                  ref,
-                  currentStatus,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Column(
+                  children: [
+                    _buildLocationCard(ref.watch(locationProvider)),
+                    const SizedBox(height: 40),
+                    _buildAttendanceButtons(
+                      ref.watch(locationProvider),
+                      attendanceState,
+                      ref,
+                      currentStatus,
+                    ),
+                    const SizedBox(height: 40),
+                    _buildHistorySection(ref),
+                    const SizedBox(height: 20),
+                  ],
                 ),
-                const SizedBox(height: 40),
-                _buildHistorySection(ref),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ==========================================
-  // TAB 2: HISTORY (Daftar Riwayat Seluruhnya)
-  // ==========================================
-  Widget _buildHistoryTab(BuildContext context, WidgetRef ref) {
-    // Memantau data dari API History
-    final historyAsync = ref.watch(historyListProvider);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header Simple untuk Tab Riwayat
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: primaryColor),
-          child: Text(
-            "Riwayat Kehadiran",
-            style: whiteTextStyle.copyWith(fontSize: 20, fontWeight: bold),
+              ),
+            ],
           ),
         ),
-
-        // Isi Daftar Riwayat
-        Expanded(
-          child: historyAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, stack) => Center(
-              child: Text("Gagal memuat data: $err", style: blackTextStyle),
-            ),
-            data: (List<dynamic> historyList) {
-              if (historyList.isEmpty) {
-                return Center(
-                  child: Text(
-                    "Belum ada riwayat absensi.",
-                    style: blackTextStyle.copyWith(color: Colors.grey),
-                  ),
-                );
-              }
-
-              // Menampilkan data dalam bentuk List (Scrollable)
-              return RefreshIndicator(
-                onRefresh: () async => ref.refresh(historyListProvider),
-                color: primaryColor,
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: historyList.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 15),
-                  itemBuilder: (context, index) {
-                    final data = historyList[index];
-
-                    // Parsing Tanggal (Format: 05 Maret 2026)
-                    String tglStr = "-";
-                    if (data['date'] != null) {
-                      DateTime tgl = DateTime.parse(data['date']).toLocal();
-                      tglStr = DateFormat('dd MMMM yyyy', 'id_ID').format(tgl);
-                    }
-
-                    // Parsing Jam
-                    String inTime = "--:--";
-                    if (data['clock_in_time'] != null) {
-                      inTime = DateFormat(
-                        'HH:mm',
-                      ).format(DateTime.parse(data['clock_in_time']).toLocal());
-                    }
-
-                    String outTime = "--:--";
-                    if (data['clock_out_time'] != null) {
-                      outTime = DateFormat('HH:mm').format(
-                        DateTime.parse(data['clock_out_time']).toLocal(),
-                      );
-                    }
-
-                    // Status Warna (Bisa disesuaikan dengan logic Go Anda)
-                    Color statusColor = successColor;
-                    if (data['clock_in_status'] == 'late')
-                      statusColor = pendingColor;
-
-                    return Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        color: whiteColor,
-                        borderRadius: BorderRadius.circular(15),
-                        boxShadow: [
-                          BoxShadow(
-                            color: blackColor.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                tglStr,
-                                style: blackTextStyle.copyWith(
-                                  fontWeight: bold,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: statusColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  (data['clock_in_status'] ?? 'Hadir')
-                                      .toString()
-                                      .toUpperCase(),
-                                  style: blackTextStyle.copyWith(
-                                    fontSize: 10,
-                                    color: statusColor,
-                                    fontWeight: bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Divider(height: 20),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              Column(
-                                children: [
-                                  Text(
-                                    "Masuk",
-                                    style: blackTextStyle.copyWith(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    inTime,
-                                    style: blackTextStyle.copyWith(
-                                      fontWeight: bold,
-                                      color: successColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                children: [
-                                  Text(
-                                    "Pulang",
-                                    style: blackTextStyle.copyWith(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    outTime,
-                                    style: blackTextStyle.copyWith(
-                                      fontWeight: bold,
-                                      color: errorColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                children: [
-                                  Text(
-                                    "Durasi",
-                                    style: blackTextStyle.copyWith(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    data['work_duration'] ?? "-",
-                                    style: blackTextStyle.copyWith(
-                                      fontWeight: bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+      ),
     );
   }
 

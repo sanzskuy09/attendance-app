@@ -8,12 +8,16 @@ class AuthState {
   final String? errorMessage;
   final String? token;
   final bool isAuthenticated;
+  final String? userName;
+  final String? userRole;
 
   AuthState({
     this.isLoading = false,
     this.errorMessage,
     this.token,
     this.isAuthenticated = false,
+    this.userName, // Tambahkan di sini
+    this.userRole,
   });
 
   AuthState copyWith({
@@ -21,12 +25,16 @@ class AuthState {
     String? errorMessage,
     String? token,
     bool? isAuthenticated,
+    String? userName,
+    String? userRole,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage ?? this.errorMessage,
       token: token ?? this.token,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
+      userName: userName ?? this.userName, // Tambahkan di sini
+      userRole: userRole ?? this.userRole,
     );
   }
 }
@@ -43,11 +51,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final result = await _repository.login(nik, password);
 
+      String fetchedName = 'Karyawan';
+      String fetchedRole = 'Staff';
+
+      if (result['user'] != null) {
+        fetchedName = result['user']['full_name'] ?? 'Karyawan';
+        fetchedRole = result['user']['role'] ?? 'Staff';
+      } else {
+        // Jika format JSON-nya langsung di root (tidak dibungkus 'user')
+        fetchedName = result['name'] ?? result['username'] ?? 'Karyawan';
+        fetchedRole = result['role'] ?? 'Staff';
+      }
+
       state = state.copyWith(
         isLoading: false,
         errorMessage: null,
         token: result['token'],
         isAuthenticated: true,
+        userName: fetchedName, // Simpan nama
+        userRole: fetchedRole, // Simpan role
       );
     } catch (e) {
       state = state.copyWith(

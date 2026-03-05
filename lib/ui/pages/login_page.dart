@@ -1,4 +1,7 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:attendance_app/shared/theme.dart';
+import 'package:attendance_app/ui/pages/admin_dashboard_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
@@ -24,19 +27,41 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     // Listen state changes
     ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next.errorMessage != null) {
+      // 1. Cek apakah error ada DAN error-nya BERBEDA dengan error sebelumnya
+      if (next.errorMessage != null &&
+          next.errorMessage != previous?.errorMessage) {
+        // 2. Hapus antrean SnackBar yang sedang tampil/menumpuk
+        ScaffoldMessenger.of(context).clearSnackBars();
+
+        // 3. Tampilkan SnackBar baru
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(next.errorMessage!),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3), // Agar cepat hilang
           ),
         );
       }
+
       if (next.isAuthenticated) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const DashboardPage()),
-        );
+        ScaffoldMessenger.of(context).clearSnackBars();
+
+        // CEK ROLE USER
+        final role = next.userRole?.toLowerCase() ?? 'staff';
+
+        if (role == 'admin' || role == 'hrd') {
+          // Jika Admin, pindah ke AdminDashboardPage
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
+          );
+        } else {
+          // Jika Karyawan/Staff, pindah ke DashboardPage biasa
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const DashboardPage()),
+          );
+        }
       }
     });
 
