@@ -137,4 +137,21 @@ class AttendanceRepository {
       throw Exception('Gagal mengambil data riwayat absensi');
     }
   }
+
+  Future<List<dynamic>> getAllAttendance(String token) async {
+    // Sesuaikan dengan URL endpoint admin Anda
+    final url = Uri.parse('$baseUrl/attendance/all');
+
+    final response = await http.get(
+      url,
+      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      return decoded['data'] ?? [];
+    } else {
+      throw Exception('Gagal mengambil seluruh data absensi');
+    }
+  }
 }

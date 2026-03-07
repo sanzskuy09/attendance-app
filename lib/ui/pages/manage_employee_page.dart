@@ -73,11 +73,11 @@ class ManageEmployeePage extends ConsumerWidget {
                 final emp = employees[index];
 
                 // Ambil data dari JSON (Sesuaikan dengan key dari backend Go Anda)
-                final String name = emp['name'] ?? 'Tanpa Nama';
+                final String name = emp['full_name'] ?? 'Tanpa Nama';
                 final String role = emp['role'] ?? 'Staff';
                 final String nik = emp['nik'] ?? '-';
                 // Jika department berupa object: emp['department']['name']
-                final String dept = emp['department_name'] ?? 'General';
+                final String dept = emp['department']?['name'] ?? 'General';
 
                 return Container(
                   padding: const EdgeInsets.all(15),

@@ -1,13 +1,23 @@
+import 'package:attendance_app/providers/attendance_provider.dart';
 import 'package:attendance_app/ui/pages/manage_department_page.dart';
 import 'package:attendance_app/ui/pages/manage_employee_page.dart';
 import 'package:attendance_app/ui/pages/manage_office_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
 // Sesuaikan import ini dengan struktur folder Anda
 import '../../shared/theme.dart';
 import '../../providers/auth_provider.dart';
 import 'login_page.dart';
+
+import 'package:printing/printing.dart';
+import '../../utils/pdf_report_service.dart';
+import '../../providers/department_provider.dart';
+import '../../providers/employee_provider.dart';
+import '../../providers/office_provider.dart';
+
+import 'package:intl/date_symbol_data_local.dart';
 
 class AdminDashboardPage extends ConsumerStatefulWidget {
   const AdminDashboardPage({super.key});
@@ -18,6 +28,13 @@ class AdminDashboardPage extends ConsumerStatefulWidget {
 
 class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Memuat data kalender bahasa Indonesia
+    initializeDateFormatting('id_ID', null);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,12 +144,39 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                 subtitle: "Ekspor seluruh data profil karyawan",
                 icon: Icons.people_alt_rounded,
                 color: primaryColor,
-                onTap: () {
+                onTap: () async {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Mengunduh Laporan Karyawan..."),
-                    ),
+                    const SnackBar(content: Text("Menyiapkan PDF Karyawan...")),
                   );
+
+                  try {
+                    final token = ref.read(authProvider).token;
+                    if (token == null) return;
+
+                    // Ambil data karyawan dari API
+                    final employees = await ref
+                        .read(employeeRepositoryProvider)
+                        .getEmployees(token);
+
+                    // Generate PDF Karyawan
+                    final pdfBytes =
+                        await PdfReportService.generateEmployeeReport(
+                          employees,
+                        );
+
+                    // Buka dialog Print/Preview
+                    await Printing.layoutPdf(
+                      onLayout: (PdfPageFormat format) async => pdfBytes,
+                      name: 'Laporan_Karyawan.pdf',
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Gagal membuat laporan: ${e.toString()}"),
+                        backgroundColor: errorColor,
+                      ),
+                    );
+                  }
                 },
               ),
               const SizedBox(height: 15),
@@ -143,12 +187,41 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                 subtitle: "Ekspor struktur departemen perusahaan",
                 icon: Icons.account_tree_rounded,
                 color: secondaryColor,
-                onTap: () {
+                onTap: () async {
+                  // 1. Tampilkan loading SnackBar
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Mengunduh Laporan Department..."),
-                    ),
+                    const SnackBar(content: Text("Menyiapkan PDF...")),
                   );
+
+                  try {
+                    // 2. Ambil data asli dari API menggunakan Provider
+                    // Kita baca langsung dari repository agar datanya selalu terbaru
+                    final token = ref.read(authProvider).token;
+                    if (token == null) return;
+
+                    final departments = await ref
+                        .read(departmentRepositoryProvider)
+                        .getDepartments(token);
+
+                    // 3. Generate file PDF (bytes)
+                    final pdfBytes =
+                        await PdfReportService.generateDepartmentReport(
+                          departments,
+                        );
+
+                    // 4. Buka Dialog Preview / Print bawaan OS
+                    await Printing.layoutPdf(
+                      onLayout: (PdfPageFormat format) async => pdfBytes,
+                      name: 'Laporan_Department.pdf',
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Gagal membuat laporan: $e"),
+                        backgroundColor: errorColor,
+                      ),
+                    );
+                  }
                 },
               ),
               const SizedBox(height: 15),
@@ -159,12 +232,37 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                 subtitle: "Ekspor data cabang & status geofencing",
                 icon: Icons.store_mall_directory_rounded,
                 color: successColor,
-                onTap: () {
+                onTap: () async {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Mengunduh Laporan Office..."),
-                    ),
+                    const SnackBar(content: Text("Menyiapkan PDF Office...")),
                   );
+
+                  try {
+                    final token = ref.read(authProvider).token;
+                    if (token == null) return;
+
+                    // Ambil data office dari API
+                    final offices = await ref
+                        .read(officeRepositoryProvider)
+                        .getOffices(token);
+
+                    // Generate PDF Office
+                    final pdfBytes =
+                        await PdfReportService.generateOfficeReport(offices);
+
+                    // Buka dialog Print/Preview
+                    await Printing.layoutPdf(
+                      onLayout: (PdfPageFormat format) async => pdfBytes,
+                      name: 'Laporan_Office.pdf',
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Gagal membuat laporan: ${e.toString()}"),
+                        backgroundColor: errorColor,
+                      ),
+                    );
+                  }
                 },
               ),
 
@@ -183,7 +281,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                 color: pendingColor, // Pakai warna orange/kuning
                 onTap: () {
                   // Khusus absensi, biasanya butuh popup untuk pilih rentang tanggal
-                  _showDateRangePicker(context);
+                  _showDateRangePicker(context, ref);
                 },
               ),
             ],
@@ -263,7 +361,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
   }
 
   // Helper fungsi untuk memunculkan Bottom Sheet (Pilih Tanggal Laporan Absensi)
-  void _showDateRangePicker(BuildContext context) {
+  void _showDateRangePicker(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -281,6 +379,51 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                 style: blackTextStyle.copyWith(fontSize: 18, fontWeight: bold),
               ),
               const SizedBox(height: 20),
+              // Tombol Cetak Semua Data
+              ListTile(
+                leading: Icon(Icons.print_rounded, color: secondaryColor),
+                title: Text(
+                  "Cetak Semua Data",
+                  style: blackTextStyle.copyWith(fontWeight: medium),
+                ),
+                onTap: () async {
+                  Navigator.pop(context); // Tutup bottom sheet
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Menyiapkan PDF Absensi...")),
+                  );
+
+                  try {
+                    final token = ref.read(authProvider).token;
+                    if (token == null) return;
+
+                    // 1. Ambil data dari API
+                    final attendances = await ref
+                        .read(attendanceRepositoryProvider)
+                        .getAllAttendance(token);
+
+                    // 2. Generate PDF
+                    final pdfBytes =
+                        await PdfReportService.generateAttendanceReport(
+                          attendances,
+                          "Semua Waktu",
+                        );
+
+                    // 3. Tampilkan Preview
+                    await Printing.layoutPdf(
+                      onLayout: (PdfPageFormat format) async => pdfBytes,
+                      name: 'Laporan_Absensi.pdf',
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Gagal membuat laporan: ${e.toString()}"),
+                        backgroundColor: errorColor,
+                      ),
+                    );
+                  }
+                },
+              ),
               ListTile(
                 leading: Icon(Icons.today_rounded, color: secondaryColor),
                 title: Text(
