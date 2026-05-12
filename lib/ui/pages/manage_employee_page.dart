@@ -1,3 +1,6 @@
+import 'package:attendance_app/providers/auth_provider.dart';
+import 'package:attendance_app/ui/pages/add_employee_page.dart';
+import 'package:attendance_app/ui/pages/edit_employee_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme.dart';
@@ -28,9 +31,9 @@ class ManageEmployeePage extends ConsumerWidget {
       // Tombol Tambah Karyawan (Mengambang di kanan bawah)
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: Navigasi ke halaman Form Tambah Karyawan
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Membuka form tambah karyawan...")),
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddEmployeePage()),
           );
         },
         backgroundColor: primaryColor,
@@ -157,11 +160,103 @@ class ManageEmployeePage extends ConsumerWidget {
                           Icons.more_vert_rounded,
                           color: Colors.grey,
                         ),
-                        onSelected: (value) {
+                        onSelected: (value) async {
                           if (value == 'edit') {
-                            // TODO: Navigasi ke Edit
+                            // --- NAVIGASI KE HALAMAN EDIT ---
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EditEmployeePage(
+                                  employeeData: emp,
+                                ), // Kirim data 'emp' ke halaman Edit
+                              ),
+                            );
+                            // --------------------------------
                           } else if (value == 'delete') {
-                            // TODO: Panggil fungsi delete di repository
+                            // --- MUNCULKAN DIALOG KONFIRMASI HAPUS ---
+                            bool confirmDelete =
+                                await showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text(
+                                      "Hapus Karyawan?",
+                                      style: blackTextStyle.copyWith(
+                                        fontWeight: bold,
+                                      ),
+                                    ),
+                                    content: Text(
+                                      "Apakah Anda yakin ingin menghapus data karyawan ${name}? Aksi ini tidak dapat dibatalkan.",
+                                      style: blackTextStyle,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: Text(
+                                          "Batal",
+                                          style: blackTextStyle.copyWith(
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: errorColor,
+                                        ),
+                                        child: Text(
+                                          "Hapus",
+                                          style: whiteTextStyle,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ) ??
+                                false;
+
+                            // JIKA USER KLIK "HAPUS"
+                            if (confirmDelete) {
+                              try {
+                                final token = ref.read(authProvider).token;
+                                if (token == null) return;
+
+                                // Panggil API Delete
+                                await ref
+                                    .read(employeeRepositoryProvider)
+                                    .deleteEmployee(token, emp['id']);
+
+                                // Refresh Daftar Karyawan
+                                ref.invalidate(employeeListProvider);
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      "Karyawan berhasil dihapus",
+                                      style: whiteTextStyle,
+                                    ),
+                                    backgroundColor: successColor,
+                                  ),
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      e.toString().replaceAll(
+                                        "Exception: ",
+                                        "",
+                                      ),
+                                      style: whiteTextStyle,
+                                    ),
+                                    backgroundColor: errorColor,
+                                  ),
+                                );
+                              }
+                            }
+                            // ------------------------------------------
                           }
                         },
                         itemBuilder: (BuildContext context) => [

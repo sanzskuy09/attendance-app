@@ -1,3 +1,6 @@
+import 'package:attendance_app/providers/auth_provider.dart';
+import 'package:attendance_app/ui/pages/add_office_page.dart';
+import 'package:attendance_app/ui/pages/edit_office_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme.dart';
@@ -27,8 +30,9 @@ class ManageOfficePage extends ConsumerWidget {
       // Tombol Tambah Office
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Membuka form tambah office...")),
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddOfficePage()),
           );
         },
         backgroundColor: successColor,
@@ -168,15 +172,77 @@ class ManageOfficePage extends ConsumerWidget {
                       ),
 
                       // Tombol Set Poligon / Aksi
-                      IconButton(
-                        icon: Icon(
-                          Icons.settings_overscan_rounded,
-                          color: primaryColor,
+                      // IconButton(
+                      //   icon: Icon(
+                      //     Icons.settings_overscan_rounded,
+                      //     color: primaryColor,
+                      //   ),
+                      //   tooltip: "Atur Geofence",
+                      //   onPressed: () {
+                      //     // TODO: Buka halaman Peta untuk menggambar poligon
+                      //   },
+                      // ),
+                      PopupMenuButton<String>(
+                        icon: const Icon(
+                          Icons.more_vert_rounded,
+                          color: Colors.grey,
                         ),
-                        tooltip: "Atur Geofence",
-                        onPressed: () {
-                          // TODO: Buka halaman Peta untuk menggambar poligon
+                        onSelected: (value) async {
+                          if (value == 'edit') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EditOfficePage(data: office),
+                              ),
+                            );
+                          } else if (value == 'delete') {
+                            // Dialog konfirmasi hapus
+                            final confirm =
+                                await showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text("Hapus Office?"),
+                                    content: Text(
+                                      "Yakin ingin menghapus ${office['name']}?",
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: const Text("Batal"),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: errorColor,
+                                        ),
+                                        child: const Text("Hapus"),
+                                      ),
+                                    ],
+                                  ),
+                                ) ??
+                                false;
+
+                            if (confirm) {
+                              final token = ref.read(authProvider).token;
+                              await ref
+                                  .read(officeRepositoryProvider)
+                                  .deleteOffice(token!, office['id']);
+                              ref.invalidate(officeListProvider);
+                            }
+                          }
                         },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Text("Edit"),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Text("Hapus"),
+                          ),
+                        ],
                       ),
                     ],
                   ),

@@ -21,8 +21,9 @@ class AuthRepository {
       );
     } catch (e) {
       // Jika masuk ke sini, berarti murni masalah koneksi (server Go mati, tidak ada internet, dll)
+      print('ERROR NETWORK: $e');
       throw Exception(
-        'Tidak dapat terhubung ke server. Pastikan backend menyala.',
+        'Tidak dapat terhubung ke server $baseUrl. Pastikan backend menyala.',
       );
     }
 
@@ -32,7 +33,7 @@ class AuthRepository {
       return jsonDecode(response.body);
     } else {
       // Jika gagal (status code 400, 401, 404, dll)
-      String errorMessage = 'Gagal login. Terjadi kesalahan sistem.';
+      String errorMessage = 'Gagal login. Terjadi kesalahan sistem. $baseUrl';
 
       try {
         final errorData = jsonDecode(response.body);

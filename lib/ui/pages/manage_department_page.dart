@@ -1,3 +1,6 @@
+import 'package:attendance_app/providers/auth_provider.dart';
+import 'package:attendance_app/ui/pages/add_department_page.dart';
+import 'package:attendance_app/ui/pages/edit_department_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme.dart';
@@ -26,8 +29,9 @@ class ManageDepartmentPage extends ConsumerWidget {
       // Tombol Tambah Department
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Membuka form tambah departemen...")),
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddDepartmentPage()),
           );
         },
         backgroundColor: secondaryColor,
@@ -136,11 +140,67 @@ class ManageDepartmentPage extends ConsumerWidget {
                           Icons.more_vert_rounded,
                           color: Colors.grey,
                         ),
-                        onSelected: (value) {
+                        onSelected: (value) async {
                           if (value == 'edit') {
-                            // TODO: Navigasi ke Edit
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EditDepartmentPage(data: dept),
+                              ),
+                            );
                           } else if (value == 'delete') {
-                            // TODO: Panggil fungsi delete di repository
+                            // Tambahkan dialog konfirmasi sebelum menghapus
+                            bool confirmDelete =
+                                await showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text(
+                                      "Hapus Karyawan?",
+                                      style: blackTextStyle.copyWith(
+                                        fontWeight: bold,
+                                      ),
+                                    ),
+                                    content: Text(
+                                      "Apakah Anda yakin ingin menghapus data department ${name}? Aksi ini tidak dapat dibatalkan.",
+                                      style: blackTextStyle,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: Text(
+                                          "Batal",
+                                          style: blackTextStyle.copyWith(
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: errorColor,
+                                        ),
+                                        child: Text(
+                                          "Hapus",
+                                          style: whiteTextStyle,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ) ??
+                                false;
+
+                            if (confirmDelete) {
+                              final token = ref.read(authProvider).token;
+                              await ref
+                                  .read(departmentRepositoryProvider)
+                                  .deleteDepartment(token!, dept['id']);
+                              ref.invalidate(departmentListProvider);
+                            }
                           }
                         },
                         itemBuilder: (BuildContext context) => [
